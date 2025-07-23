@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- ########################################################### -->
+  <!-- xacro for converting yaml to urdf for better readibility    -->
+  <!-- ########################################################### -->
+
+
+  <!-- =========================================================== -->
+  <!-- Load properties from yamls                                  -->
+  <!-- =========================================================== -->
+  <!-- Load inertial properties. Property is implicitly passed to macros. -->
+  <xacro:property name="inertial_config"
+    value="${description_package}/config/inertial.yaml"/>
+  <xacro:property name="inertial"
+    value="${xacro.load_yaml(inertial_config)}"/>
+  <!-- Load capsule properties. Property is implicitly passed to macros. -->
+  <xacro:property name="collision_config"
+    value="${description_package}/config/collision.yaml"/>
+  <xacro:property name="collision"
+    value="${xacro.load_yaml(collision_config)}"/>
+  <!-- Load visual properties. Property is implicitly passed to macros. -->
+  <xacro:property name="visual_config"
+    value="${description_package}/config/visual.yaml"/>
+  <xacro:property name="visual"
+    value="${xacro.load_yaml(visual_config)}"/>
+
+
+  <!-- =========================================================== -->
+  <!-- Macro definitions begin                                     -->
+  <!-- =========================================================== -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to add a <visual> tag based on yaml-load properties      -->
+  <!--                                                                -->
+  <!-- name: Name of the robot link (without prefix)                  -->
+  <!-- visual: Dictionary of visual properties (see visual.yaml)      -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="config_visual"
+    params="name visual:=^">
+    <xacro:unless value="${name in visual}">
+      ${xacro.warning('No visual properties defined for: ' + name)}
+    </xacro:unless>
+    <xacro:if value="${name in visual}">
+      <xacro:property name="visual_prop"
+        value="${visual[name]}"
+        lazy_eval="false" />
+      <visual>
+        <origin rpy="${visual_prop.origin.rpy}"
+          xyz="${visual_prop.origin.xyz}" />
+        <geometry>
+          <mesh filename="${visual_prop.path}" />
+        </geometry>
+        <material name="">
+          <color rgba="${visual_prop.rgba}" />
+        </material>
+      </visual>
+    </xacro:if>
+  </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to generate sphere collision geometry                    -->
+  <!--                                                                -->
+  <!-- name: Name of the robot link (without prefix)                  -->
+  <!-- collision: Dictionary of collision properties                  -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="collision_sphere_helper"
+    params="sphere_prop:=^">
+    <collision>
+      <origin xyz="${sphere_prop.center}"
+        rpy="0 0 0" />
+      <geometry>
+        <sphere radius="${sphere_prop.radius}" />
+      </geometry>
+    </collision>
+  </xacro:macro>
+  <xacro:macro name="collision_sphere"
+    params="name collision:=^">
+    <xacro:property name="sphere_prop"
+      value="${collision[name].sphere}"
+      lazy_eval="false" />
+    <xacro:collision_sphere_helper sphere_prop="${sphere_prop}" />
+  </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to generate cylinder collision geometry                  -->
+  <!--                                                                -->
+  <!-- name: Name of the robot link (without prefix)                  -->
+  <!-- collision: Dictionary of collision properties                  -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="collision_cylinder_helper"
+    params="cylinder_prop:=^">
+    <collision>
+      <origin xyz="${cylinder_prop.origin.xyz}"
+        rpy="${cylinder_prop.origin.rpy}" />
+      <geometry>
+        <cylinder radius="${cylinder_prop.radius}"
+          length="${cylinder_prop.length}" />
+      </geometry>
+    </collision>
+  </xacro:macro>
+  <xacro:macro name="collision_cylinder"
+    params="name collision:=^">
+    <xacro:property name="cylinder_prop"
+      value="${collision[name].cylinder}"
+      lazy_eval="false" />
+    <xacro:collision_cylinder_helper cylinder_prop="${cylinder_prop}" />
+  </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to generate box collision geometry                       -->
+  <!--                                                                -->
+  <!-- name: Name of the robot link (without prefix)                  -->
+  <!-- collision: Dictionary of collision properties                  -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="collision_box"
+    params="name collision:=^">
+    <xacro:property name="box_prop"
+      value="${collision[name].box}"
+      lazy_eval="false" />
+    <collision>
+      <origin xyz="${box_prop.origin.xyz}"
+        rpy="${box_prop.origin.rpy}" />
+      <geometry>
+        <box size="${box_prop.size}" />
+      </geometry>
+    </collision>
+  </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to generate capsule collision geometry                   -->
+  <!-- (implemented using cylinder + spheres, reusing above macros)   -->
+  <!--                                                                -->
+  <!-- name: Name of the robot link (without prefix)                  -->
+  <!-- collision: Dictionary of collision properties                  -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="collision_capsule"
+    params="name collision:=^">
+    <xacro:property name="capsule_prop"
+      value="${collision[name].capsule}"
+      lazy_eval="false" />
+    <!-- Main cylinder body -->
+    <xacro:property name="cylinder_prop"
+      value="${capsule_prop.cylinder}"
+      lazy_eval="false" />
+    <xacro:collision_cylinder_helper cylinder_prop="${cylinder_prop}" />
+    <!-- End spheres -->
+    <xacro:property name="spheres_list"
+      value="${capsule_prop.spheres}"
+      lazy_eval="false" />
+    <xacro:property name="sphere_prop"
+      value="${spheres_list[0]}"
+      lazy_eval="false" />
+    <xacro:collision_sphere_helper sphere_prop="${sphere_prop}" />
+    <xacro:property name="sphere_prop"
+      value="${spheres_list[1]}"
+      lazy_eval="false" />
+    <xacro:collision_sphere_helper sphere_prop="${sphere_prop}" />
+  </xacro:macro>
+
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to add collision properties based on yaml-load properties    -->
+  <!--                                                                    -->
+  <!-- name:      Name of the robot link (without prefix)                 -->
+  <!-- sim:       Boolean flag to choose collision type                   -->
+  <!--            true: use convex mesh for simulation                    -->
+  <!--            false: use capsule for self collision                   -->
+  <!-- collision: Dictionary of collision properties (see collision.yaml) -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="config_collision"
+    params="name sim collision:=^">
+    <xacro:unless value="${sim}">
+      <!-- sphere -->
+      <xacro:if value="${'sphere' in collision[name]}">
+        <xacro:collision_sphere name="${name}"
+          collision="${collision}"/>
+      </xacro:if>
+      <!-- cylinder -->
+      <xacro:if value="${'cylinder' in collision[name]}">
+        <xacro:collision_cylinder name="${name}"
+          collision="${collision}"/>
+      </xacro:if>
+      <!-- box -->
+      <xacro:if value="${'box' in collision[name]}">
+        <xacro:collision_box name="${name}"
+          collision="${collision}"/>
+      </xacro:if>
+      <!-- capsule -->
+      <xacro:if value="${'capsule' in collision[name]}">
+        <xacro:collision_capsule name="${name}"
+          collision="${collision}"/>
+      </xacro:if>
+    </xacro:unless>
+    <!-- use convex mesh for simulation -->
+    <xacro:if value="${sim}">
+      <collision>
+        <origin rpy="${collision[name].convex_mesh.origin.rpy}"
+          xyz="${collision[name].convex_mesh.origin.xyz}" />
+        <geometry>
+          <mesh filename="${collision[name].convex_mesh.path}" />
+        </geometry>
+      </collision>
+    </xacro:if>
+  </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to add an <inertial> tag based on yaml-load properties   -->
+  <!--                                                                -->
+  <!-- name:     Name of the robot link (without prefix)              -->
+  <!-- inertial: Dictionary of inertia properties (see inertial.yaml) -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="config_inertial"
+    params="name inertial:=^">
+    <xacro:unless value="${name in inertial}">
+      ${xacro.warning('No inertia properties defined for: ' + name)}
+    </xacro:unless>
+    <xacro:if value="${name in inertial}">
+      <xacro:property name="inertial"
+        value="${inertial[name]}"
+        lazy_eval="false" />
+      <inertial>
+        <origin rpy="${inertial.origin.rpy}"
+          xyz="${inertial.origin.xyz}" />
+        <mass value="${inertial.mass}" />
+        <xacro:property name="I"
+          value="${inertial.inertia}" />
+        <inertia ixx="${I.xx}"
+          ixy="${I.xy}"
+          ixz="${I.xz}"
+          iyy="${I.yy}"
+          iyz="${I.yz}"
+          izz="${I.zz}" />
+      </inertial>
+    </xacro:if>
+  </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to create a complete link with inertial, visual, and     -->
+  <!-- collision properties based on yaml-load configurations         -->
+  <!--                                                                -->
+  <!-- prefix: Prefix to add to the link name                         -->
+  <!-- name:   Name of the robot link (without prefix)                -->
+  <!-- sim:    Boolean flag for collision type (default: false)       -->
+  <!--         true: use convex mesh collision for simulation         -->
+  <!--         false: use capsule collision for self collision        -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="config_link"
+    params="prefix:='' name sim:=false disable_collision:=false">
+    <link name="${prefix}${name}">
+      <xacro:config_inertial name="${name}"
+        inertial="${inertial}"/>
+      <xacro:config_visual name="${name}"
+        visual="${visual}"/>
+      <xacro:unless value="${disable_collision}">
+        <xacro:config_collision name="${name}"
+          sim="${sim}"
+          collision="${collision}"/>
+      </xacro:unless>
+    </link>
+  </xacro:macro>
+</robot>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:property name="description_package"
+    value="$(find package_template_name)" />
+  <xacro:include filename="${description_package}/urdf/utils.xacro" />
+  <xacro:macro name="macro_template_name"
+    params="prefix:='' parent xyz:='0 0 0' rpy:='0 0 0' sim:=false">
+    <!-- auto generated urdf below -->
+
+    <!-- base_link to body_lift -->
+    <joint name="${prefix}macro_template_name_install_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <parent link="${parent}" />
+      <child link="${prefix}root_link_template_name" />
+    </joint>
+  </xacro:macro>
+</robot>
