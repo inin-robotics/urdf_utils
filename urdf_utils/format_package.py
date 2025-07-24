@@ -31,6 +31,11 @@ def format_template(output_path, output_pkg_name, output_macro_name):
     xacro_urdf_file = output_dir / "urdf" / "macro_template.urdf.xacro"
     xacro_urdf_file_new = xacro_urdf_file.with_name(output_macro_name + ".urdf.xacro")
     xacro_urdf_file.rename(xacro_urdf_file_new)
+    transmission_file = output_dir / "urdf" / "macro_template_transmission.xacro"
+    transmission_file_new = transmission_file.with_name(
+        output_macro_name + "_transmission.xacro"
+    )
+    transmission_file.rename(transmission_file_new)
 
     # 修改文件中的包名称
     files_to_modify = [
@@ -39,6 +44,7 @@ def format_template(output_path, output_pkg_name, output_macro_name):
         output_dir / "package.xml",
         xacro_file_new,
         xacro_urdf_file_new,
+        transmission_file_new,
     ]
     for file_path in files_to_modify:
         content = file_path.read_text(encoding="utf-8")
@@ -167,6 +173,7 @@ def format_links_and_joints(input_pkg_path, output_pkg_path, output_macro_name):
 
     # 生成joints的xacro代码
     joints_code = []
+    joints_transmission = []
     for joint_info in joints:
         if not joint_info["joint type"]:  # 如果没有关节类型，跳过
             raise RuntimeError(
@@ -222,6 +229,9 @@ def format_links_and_joints(input_pkg_path, output_pkg_path, output_macro_name):
             joint_xacro.append(f"      <limit {' '.join(limit_parts)} />")
         joint_xacro.append("    </joint>")
         joints_code.extend(joint_xacro)
+        joints_transmission.append(
+            f'<xacro:config_transmission joint_name="${{prefix}}{joint_info["joint name"]}" interface_name="${{interface_name}}" />'
+        )
 
     # 将生成的代码插入到xacro文件中
     # 找到注释结束的位置并在其后插入新代码
@@ -253,5 +263,26 @@ def format_links_and_joints(input_pkg_path, output_pkg_path, output_macro_name):
     # 写回文件
     xacro_content = "\n".join(lines)
     xacro_file.write_text(xacro_content, encoding="utf-8")
+    
+    # 插入transmission代码
+    transmission_file = output_pkg_path / "urdf" / f"{output_macro_name}_transmission.xacro"
+    lines = transmission_file.read_text(encoding="utf-8").split("\n")
+    insert_pos = -1
+    for i, line in enumerate(lines):
+        if "<!-- auto generated urdf below -->" in line:
+            insert_pos = i + 1
+            break
+    if insert_pos == -1:
+        for i, line in enumerate(lines):
+            if "</xacro:macro>" in line:
+                insert_pos = i
+                break
+    if insert_pos == -1:
+        raise RuntimeError("未找到插入位置，请检查transmission template xacro文件格式")
+    for transmission_code in joints_transmission:
+        lines.insert(insert_pos, transmission_code)
+        insert_pos += 1
+    transmission_content = "\n".join(lines)
+    transmission_file.write_text(transmission_content, encoding="utf-8")
 
     print("已完成link和joint的格式化！")

@@ -257,4 +257,26 @@
       </xacro:unless>
     </link>
   </xacro:macro>
+
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <!-- Macro to configure transmission for a joint                    -->
+  <!--                                                                -->
+  <!-- joint_name:     Name of the joint to configure transmission for -->
+  <!-- interface_name: Type of hardware interface (e.g., effort,      -->
+  <!--                 position, velocity)                            -->
+  <!-- reduction:      Mechanical reduction ratio (default: 1)        -->
+  <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+  <xacro:macro name="config_transmission"
+    params="joint_name interface_name reduction:=1">
+    <transmission name="${joint_name}_${interface_name.lower()}_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${joint_name}">
+        <hardwareInterface>hardware_interface/${interface_name.capitalize()}JointInterface</hardwareInterface>
+      </joint>
+      <actuator name="${joint_name}_motor">
+        <hardwareInterface>hardware_interface/${interface_name.capitalize()}JointInterface</hardwareInterface>
+        <mechanicalReduction>${reduction}</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
 </robot>
