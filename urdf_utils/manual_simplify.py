@@ -256,7 +256,8 @@ def main():
         max_prim_id = 0
         for p in prim_list:
             name = p.get_property("name")
-            if name == prim_type:
+            type_name = p.get_type()
+            if type_name == prim_type:
                 max_prim_id = max(max_prim_id, int(name.rsplit("_")[-1]))
         prim_name = f"{prim_type}_{max_prim_id + 1}"
         prim.add_properties({"name": prim_name})
@@ -290,7 +291,7 @@ def main():
         if len(prim_list) == 0:
             return
         prim_idx %= len(prim_list)
-        change_current_prim_color(o3dvis, [0.5, 0.0, 0.0])
+        change_current_prim_color(o3dvis, [0.0, 0.5, 0.0])
 
     def change_current_prim_color(o3dvis, color):
         nonlocal prim_idx, prim_list
@@ -333,6 +334,10 @@ def main():
         transform = prim_ori.get_transform()
         name = prop.pop("name")
         prop[prop_name] += diff
+        if prop[prop_name] < 0:
+            reset_value = 0.001
+            print(f"Property '{prop_name}' cannot be negative. Resetting to {reset_value}")
+            prop[prop_name] = reset_value
         prim_new = get_prim_by_type(type_name, **prop)
         prim_new.add_properties({"name": name})
         prim_new.update_transform(transform)
@@ -400,26 +405,37 @@ def main():
         ("remove current", remove_current_prim),
         ("next one", move_to_next_prim),
         ("inc radius 1cm", lambda o3dvis: adjust_property(o3dvis, "radius", 0.01)),
+        ("inc radius 1mm", lambda o3dvis: adjust_property(o3dvis, "radius", 0.001)),
         ("dec radius 1cm", lambda o3dvis: adjust_property(o3dvis, "radius", -0.01)),
         ("inc length 1cm", lambda o3dvis: adjust_property(o3dvis, "length", 0.01)),
+        ("inc length 1mm", lambda o3dvis: adjust_property(o3dvis, "length", 0.001)),
         ("dec length 1cm", lambda o3dvis: adjust_property(o3dvis, "length", -0.01)),
         ("inc width 1cm", lambda o3dvis: adjust_property(o3dvis, "width", 0.01)),
+        ("inc width 1mm", lambda o3dvis: adjust_property(o3dvis, "width", 0.001)),
         ("dec width 1cm", lambda o3dvis: adjust_property(o3dvis, "width", -0.01)),
         ("inc height 1cm", lambda o3dvis: adjust_property(o3dvis, "height", 0.01)),
+        ("inc height 1mm", lambda o3dvis: adjust_property(o3dvis, "height", 0.001)),
         ("dec height 1cm", lambda o3dvis: adjust_property(o3dvis, "height", -0.01)),
         ("inc depth 1cm", lambda o3dvis: adjust_property(o3dvis, "depth", 0.01)),
+        ("inc depth 1mm", lambda o3dvis: adjust_property(o3dvis, "depth", 0.001)),
         ("dec depth 1cm", lambda o3dvis: adjust_property(o3dvis, "depth", -0.01)),
         ("inc x 1cm", lambda o3dvis: inc_transform_prim(o3dvis, "x", 0.01)),
+        ("inc x 1mm", lambda o3dvis: inc_transform_prim(o3dvis, "x", 0.001)),
         ("dec x 1cm", lambda o3dvis: inc_transform_prim(o3dvis, "x", -0.01)),
         ("inc y 1cm", lambda o3dvis: inc_transform_prim(o3dvis, "y", 0.01)),
+        ("inc y 1mm", lambda o3dvis: inc_transform_prim(o3dvis, "y", 0.001)),
         ("dec y 1cm", lambda o3dvis: inc_transform_prim(o3dvis, "y", -0.01)),
         ("inc z 1cm", lambda o3dvis: inc_transform_prim(o3dvis, "z", 0.01)),
+        ("inc z 1mm", lambda o3dvis: inc_transform_prim(o3dvis, "z", 0.001)),
         ("dec z 1cm", lambda o3dvis: inc_transform_prim(o3dvis, "z", -0.01)),
         ("inc rx 5deg", lambda o3dvis: inc_transform_prim(o3dvis, "rx", 5)),
+        ("inc rx 1deg", lambda o3dvis: inc_transform_prim(o3dvis, "rx", 1)),
         ("dec rx 5deg", lambda o3dvis: inc_transform_prim(o3dvis, "rx", -5)),
         ("inc ry 5deg", lambda o3dvis: inc_transform_prim(o3dvis, "ry", 5)),
+        ("inc ry 1deg", lambda o3dvis: inc_transform_prim(o3dvis, "ry", 1)),
         ("dec ry 5deg", lambda o3dvis: inc_transform_prim(o3dvis, "ry", -5)),
         ("inc rz 5deg", lambda o3dvis: inc_transform_prim(o3dvis, "rz", 5)),
+        ("inc rz 1deg", lambda o3dvis: inc_transform_prim(o3dvis, "rz", 1)),
         ("dec rz 5deg", lambda o3dvis: inc_transform_prim(o3dvis, "rz", -5)),
     ]:
         viewer.add_action(action[0], action[1])
